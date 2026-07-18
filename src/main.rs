@@ -13,16 +13,22 @@ fn main() {
                 let n = stream.read(&mut buf).expect("failed to read");
                 let request = std::str::from_utf8(&buf[..n]).unwrap_or("");
 
-                // "GET /path HTTP/1.1\r\n..."
                 let path = request
                     .lines()
                     .next()
                     .and_then(|line| line.split_whitespace().nth(1))
                     .unwrap_or("");
 
-                let response = match path {
-                    "/" => "HTTP/1.1 200 OK\r\n\r\n",
-                    _ => "HTTP/1.1 404 Not Found\r\n\r\n",
+                let response = if path == "/" {
+                    "HTTP/1.1 200 OK\r\n\r\n".to_string()
+                } else if let Some(s) = path.strip_prefix("/echo/") {
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
+                        s.len(),
+                        s
+                    )
+                } else {
+                    "HTTP/1.1 404 Not Found\r\n\r\n".to_string()
                 };
 
                 stream.write_all(response.as_bytes()).expect("failed to write response");
