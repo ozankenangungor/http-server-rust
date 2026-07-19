@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
+    thread,
 };
 
 fn handle_connection(stream: TcpStream) {
@@ -63,7 +64,9 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => handle_connection(stream),
+            Ok(stream) => {
+                thread::spawn(|| handle_connection(stream));
+            }
             Err(e) => eprintln!("error: {e}"),
         }
     }
