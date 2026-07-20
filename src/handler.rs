@@ -25,7 +25,11 @@ pub fn handle(stream: TcpStream, base_dir: PathBuf) {
             .map(|v| v.eq_ignore_ascii_case("close"))
             .unwrap_or(false);
 
-        let response = route(&req, &base_dir);
+        let mut response = route(&req, &base_dir);
+        if close {
+            response = response.header("Connection", "close");
+        }
+
         if (&stream).write_all(&response.into_bytes()).is_err() {
             break;
         }
