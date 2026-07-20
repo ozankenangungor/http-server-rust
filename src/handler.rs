@@ -23,7 +23,16 @@ fn route(req: &Request, base_dir: &PathBuf) -> Response {
 
         (_, path) if path.starts_with("/echo/") => {
             let s = path.strip_prefix("/echo/").unwrap();
-            Response::ok().text(s)
+            let accepts_gzip = req
+                .header("accept-encoding")
+                .map(|v| v.split(',').any(|enc| enc.trim() == "gzip"))
+                .unwrap_or(false);
+
+            let mut resp = Response::ok().text(s);
+            if accepts_gzip {
+                resp = resp.header("Content-Encoding", "gzip");
+            }
+            resp
         }
 
         (_, "/user-agent") => {
