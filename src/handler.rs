@@ -1,3 +1,4 @@
+use flate2::{write::GzEncoder, Compression};
 use std::{
     fs,
     io::{BufReader, Write},
@@ -6,6 +7,12 @@ use std::{
 };
 
 use crate::{request::Request, response::Response};
+
+fn gzip(data: &[u8]) -> Vec<u8> {
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+    encoder.write_all(data).expect("gzip write failed");
+    encoder.finish().expect("gzip finish failed")
+}
 
 pub fn handle(stream: TcpStream, base_dir: PathBuf) {
     let mut reader = BufReader::new(&stream);
@@ -28,11 +35,16 @@ fn route(req: &Request, base_dir: &PathBuf) -> Response {
                 .map(|v| v.split(',').any(|enc| enc.trim() == "gzip"))
                 .unwrap_or(false);
 
-            let mut resp = Response::ok().text(s);
             if accepts_gzip {
-                resp = resp.header("Content-Encoding", "gzip");
+                let compressed = gzip(s.as_bytes());
+                Response::ok()
+                    .header("Content-Type", "text/plain")
+                    .header("Content-Encoding", "gzip")
+                    .header("Content-Length", compressed.len())
+                    .body(compressed)
+            } else {
+                Response::ok().text(s)
             }
-            resp
         }
 
         (_, "/user-agent") => {
