@@ -16,12 +16,24 @@ fn gzip(data: &[u8]) -> Vec<u8> {
 
 pub fn handle(stream: TcpStream, base_dir: PathBuf) {
     let mut reader = BufReader::new(&stream);
-    let Some(req) = Request::parse(&mut reader) else { return };
 
-    let response = route(&req, &base_dir);
-    (&stream)
-        .write_all(&response.into_bytes())
-        .expect("failed to write response");
+    loop {
+        let Some(req) = Request::parse(&mut reader) else { break };
+
+        let close = req
+            .header("connection")
+            .map(|v| v.eq_ignore_ascii_case("close"))
+            .unwrap_or(false);
+
+        let response = route(&req, &base_dir);
+        if (&stream).write_all(&response.into_bytes()).is_err() {
+            break;
+        }
+
+        if close {
+            break;
+        }
+    }
 }
 
 fn route(req: &Request, base_dir: &PathBuf) -> Response {
